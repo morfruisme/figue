@@ -1,11 +1,12 @@
-(* temporaire, a remplacer par lang regulier *)
+(* pas utile *)
+(* implementer langage regulier et fusionner avec l'automate lexer *)
 
 type rule =
 | Char of char
 | Or of rule list
 | Repeat
 
-let rule_of_string s =
+let or_of_string s =
   let rec f i l =
     if i = String.length s then
       l
@@ -13,16 +14,17 @@ let rule_of_string s =
       f (i+1) (Char s.[i]::l) in
   Or (f 0 [])
 
-let number_rule =
-  [rule_of_string "01"; rule_of_string "01"; rule_of_string "01"; Or [Char '_'; Repeat]; Repeat]
-
-let rec print_rule r =
+let rec to_string r =
   match r with
-  | Char c -> Printf.printf "%c " c
-  | Or rl -> List.iter print_rule rl
-  | Repeat -> Printf.printf "Repeat "
+  | Char c -> Printf.sprintf " %c" c
+  | Or rl ->
+    List.fold_left (fun s r -> s ^ to_string r) "" rl
+  | Repeat -> Printf.sprintf " Repeat"
 
-let pass_rule rl s =
+let rules_to_string rl =
+  List.fold_left (fun s r -> Printf.sprintf "%s|%s " s (to_string r)) "" rl
+
+let pass rl s =
   (* repeat if bool is true *)
   let exception Pass of bool in
 
@@ -46,3 +48,5 @@ let pass_rule rl s =
     
   g rl 0
 
+let number =
+  [or_of_string "01"; or_of_string "01"; or_of_string "01"; Or [Char '_'; Repeat]; Repeat]

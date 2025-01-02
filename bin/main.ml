@@ -1,7 +1,5 @@
-open Compiler.Rule
+open Figue.Lexer
 
 let () =
-  List.iter (fun r -> Printf.printf "|"; print_rule r) number_rule;
-  let x = "110_111_11" in
-  Printf.printf "\n%b\n" @@ pass_rule number_rule x;
-  ()
+  let l = lexer_read lexer "a := 1" in
+  List.iter (fun l -> print_string (print_lexeme l)) l
