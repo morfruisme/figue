@@ -18,25 +18,27 @@ module type A = sig
   val new_state: 'o t -> int
   val set_accept: 'o t -> int -> 'o -> unit
   val is_accept: 'o t -> int -> bool
+  val accept: 'o t -> int -> 'o option
   val add_transition: 'o t -> int -> i -> int -> bool
   val add_transition_fill: 'o t -> int -> i -> int option
   val read: 'o t -> int -> i -> int option
+  val read_word: 'o t -> i list -> 'o option
   val to_string: 'o t -> string
   val print: 'o t -> unit
 end
 
 module Make
-  (Input: sig
+  (Sym: sig
     type t
     include ToString with type t := t
     include Set.OrderedType with type t := t
   end)
-  : A with type i = Input.t
+  : A with type i = Sym.t
   = struct
 
-  module Set = Set.Make (Input)
+  module Set = Set.Make (Sym)
 
-  type i = Input.t
+  type i = Sym.t
   type set = Set.t
 
   type 'o t = {
@@ -64,6 +66,9 @@ module Make
   let is_accept a q =
     Hashtbl.mem a.accept q
 
+  let accept a q =
+    Hashtbl.find_opt a.accept q
+
   let add_transition a q s q' =
     if Hashtbl.mem a.delta (q, s) then
       false
@@ -83,8 +88,18 @@ module Make
   let read a q s =
     Hashtbl.find_opt a.delta (q, s)
 
+  let read_word a w =
+    let rec f q w =
+      match w with
+      | [] -> accept a q
+      | s::w ->
+        match read a q s with
+        | None -> None
+        | Some q' -> f q' w in
+    f 0 w
+
   let to_string a =
-    let padding = 1 + Misc.list_max (Set.to_list a.symbols) (fun x -> String.length (Input.to_string x)) in
+    let padding = 1 + Misc.list_max (Set.to_list a.symbols) (fun x -> String.length (Sym.to_string x)) in
 
     let rec f q s =
       if q = a.n_states then
@@ -115,7 +130,7 @@ module Make
         (fun s acc ->
           Printf.sprintf "%s|%s" acc @@
           Misc.pad_to padding @@
-          (Input.to_string s))
+          (Sym.to_string s))
         a.symbols
         "" in
 

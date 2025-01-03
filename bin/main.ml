@@ -1,12 +1,6 @@
-open Figue.Automata
+open Figue
 
-module Int = struct
-  type t = int
-  let to_string = string_of_int
-  let compare = compare
-end
-
-module A = Make (Int)
+module A = Automata.Make (Int)
 
 let () =
   let a = A.empty () in

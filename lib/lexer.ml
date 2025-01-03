@@ -1,3 +1,12 @@
+module AChar = struct
+  type t = char
+  let to_string = Char.escaped
+  let compare = Char.compare
+end
+
+module A = Automata.Make (AChar)
+
+
 type lexeme =
 | Var of string | Const of string
 | Si | Sinon
@@ -10,45 +19,28 @@ type lex_repr =
 | Keyword of (lexeme * string)
 | Word of (lexeme * string)
 
-type ('a, 'b) automata = {
-  mutable n_states: int;
-  accept: (int, 'a) Hashtbl.t;
-  delta: (int * 'b, int) Hashtbl.t;
-}
-
-let add_transition a q s =
-  match Hashtbl.find_opt a.delta (q, s) with
-  | Some q' -> q'
-  | None ->
-    let q' = a.n_states in
-    Hashtbl.add a.delta (q, s) q';
-    a.n_states <- a.n_states + 1;
-    q'
-
 let add_keyword lexer l s =
   let n = String.length s in
   let f q i =
     if i = n then
-      Hashtbl.add lexer.accept q l;
-    add_transition lexer q s.[i] in
+      A.set_accept lexer q l;
+    A.add_transition_fill lexer q s.[i] in
   ignore (f 0 0)
 
 let add_word lexer l =
   String.iter
     (fun c ->
-      (if Hashtbl.mem lexer.delta (0, c) then
-        (* pour l'instant eviter les majuscules et symboles, meilleur automate plus tard *)
-        failwith "word alphabet cannot contain the first char of a keyword");
-      let q = add_transition lexer 0 c in
-      Hashtbl.add lexer.delta (q, c) q;
-      Hashtbl.add lexer.accept q l)
+      let q = A.add_transition_fill lexer 0 c in
+      match q with
+      | None ->
+        (* ne peut pas commencer par un symbole déjà utilisé *)
+        failwith @@ Printf.sprintf "some keyword may start with %s" (AChar.to_string c)
+      | Some q ->
+        ignore @@ A.add_transition lexer q c q;
+        A.set_accept lexer q l)
 
-let lexer_init lexemes =
-  let lexer = {
-    n_states = 0;
-    accept = Hashtbl.create 16;
-    delta = Hashtbl.create 16;
-  } in
+let init lexemes =
+  let lexer = A.empty () in
 
   List.iter 
     (fun l ->
@@ -59,26 +51,26 @@ let lexer_init lexemes =
   
   lexer
 
-let lexer_one lexer s i =
+let read_one lexer s i =
   let rec f q j =
-    match Hashtbl.find_opt lexer.delta (q, s.[i+j]) with
+    match A.read lexer q s.[i+j] with
     | None -> q, j
     | Some q' -> f q' (j+1) in
   
   let q, j = f 0 0 in
-  match Hashtbl.find_opt lexer.accept q with
+  match A.accept lexer q with
   | None -> failwith "reading error"
   | Some (Var _) -> Var (String.sub s i j), j
   | Some (Const _) -> Const (String.sub s i j), j
   | Some l -> l, j
 
-let lexer_read lexer s =
+let read lexer s =
   let n = String.length s in
   let rec f i acc =
     if i = n then
       acc
     else
-      let l, j = lexer_one lexer s i in
+      let l, j = read_one lexer s i in
       f (i+j) (l::acc) in
   f 0 []
 
@@ -111,4 +103,4 @@ let print_lexeme l =
         | _ -> None)
       lexemes
 
-let lexer = lexer_init lexemes
+let lexer = init lexemes
