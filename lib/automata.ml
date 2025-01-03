@@ -9,7 +9,7 @@ module type A = sig
 
   type 'o t = private {
     mutable n_states: int;
-    mutable alphabet: set;
+    mutable symbols: set;
     accept: (int, 'o) Hashtbl.t;
     delta: (int * i, int) Hashtbl.t;
   }
@@ -41,14 +41,14 @@ module Make
 
   type 'o t = {
     mutable n_states: int;
-    mutable alphabet: Set.t;
+    mutable symbols: Set.t;
     accept: (int, 'o) Hashtbl.t;
     delta: (int * i, int) Hashtbl.t;
   }
 
   let empty () = {
     n_states = 0;
-    alphabet = Set.empty;
+    symbols = Set.empty;
     accept = Hashtbl.create 16;
     delta = Hashtbl.create 16;
   }
@@ -69,7 +69,7 @@ module Make
       false
     else
       (Hashtbl.add a.delta (q, s) q';
-      a.alphabet <- Set.add s a.alphabet;
+      a.symbols <- Set.add s a.symbols;
       true) 
   
   let add_transition_fill a q s =
@@ -84,7 +84,7 @@ module Make
     Hashtbl.find_opt a.delta (q, s)
 
   let to_string a =
-    let padding = 1 + Misc.list_max (Set.to_list a.alphabet) (fun x -> String.length (Input.to_string x)) in
+    let padding = 1 + Misc.list_max (Set.to_list a.symbols) (fun x -> String.length (Input.to_string x)) in
 
     let rec f q s =
       if q = a.n_states then
@@ -105,7 +105,7 @@ module Make
               match read a q s with
               | None -> "-"
               | Some q' -> string_of_int q')
-            a.alphabet
+            a.symbols
             "" in
         f (q+1) s in
 
@@ -116,7 +116,7 @@ module Make
           Printf.sprintf "%s|%s" acc @@
           Misc.pad_to padding @@
           (Input.to_string s))
-        a.alphabet
+        a.symbols
         "" in
 
     f 0 s
