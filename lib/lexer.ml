@@ -20,24 +20,16 @@ type lex_repr =
 | Word of (lexeme * string)
 
 let add_keyword lexer l s =
-  let n = String.length s in
-  let f q i =
-    if i = n then
-      A.set_accept lexer q l;
-    A.add_transition_fill lexer q s.[i] in
-  ignore (f 0 0)
+  A.accept_word lexer (Misc.explode s) l
 
 let add_word lexer l =
   String.iter
     (fun c ->
       let q = A.add_transition_fill lexer 0 c in
-      match q with
-      | None ->
-        (* ne peut pas commencer par un symbole déjà utilisé *)
-        failwith @@ Printf.sprintf "some keyword may start with %s" (AChar.to_string c)
-      | Some q ->
-        ignore @@ A.add_transition lexer q c q;
-        A.set_accept lexer q l)
+      ignore @@ A.add_transition lexer q c q;
+      if A.is_accept lexer q then
+        failwith @@ Printf.sprintf "some keyword may already start with %c" c;
+      A.accept lexer q l)
 
 let init lexemes =
   let lexer = A.empty () in
@@ -53,12 +45,12 @@ let init lexemes =
 
 let read_one lexer s i =
   let rec f q j =
-    match A.read lexer q s.[i+j] with
+    match A.follow lexer q s.[i+j] with
     | None -> q, j
     | Some q' -> f q' (j+1) in
   
   let q, j = f 0 0 in
-  match A.accept lexer q with
+  match A.read lexer q with
   | None -> failwith "reading error"
   | Some (Var _) -> Var (String.sub s i j), j
   | Some (Const _) -> Const (String.sub s i j), j
