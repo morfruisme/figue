@@ -1,53 +1,48 @@
-open Display
-
 module type ToString = sig
   type t
   val to_string: t -> string
 end
 
 module type A = sig
-  type o
   type i
   type set
 
-  type t = private {
+  type 'o t = private {
     mutable n_states: int;
     mutable alphabet: set;
-    accept: (int, o) Hashtbl.t;
+    accept: (int, 'o) Hashtbl.t;
     delta: (int * i, int) Hashtbl.t;
   }
 
-  val empty: unit -> t
-  val new_state: t -> int
-  val set_accept: t -> int -> o -> unit
-  val is_accept: t -> int -> bool
-  val add_transition: t -> int -> i -> int -> bool
-  val add_transition_fill: t -> int -> i -> int option
-  val read: t -> int -> i -> int option
-  val to_string: t -> string
-  val print: t -> unit
+  val empty: unit -> 'o t
+  val new_state: 'o t -> int
+  val set_accept: 'o t -> int -> 'o -> unit
+  val is_accept: 'o t -> int -> bool
+  val add_transition: 'o t -> int -> i -> int -> bool
+  val add_transition_fill: 'o t -> int -> i -> int option
+  val read: 'o t -> int -> i -> int option
+  val to_string: 'o t -> string
+  val print: 'o t -> unit
 end
 
 module Make
-  (Output: ToString)
   (Input: sig
     type t
     include ToString with type t := t
     include Set.OrderedType with type t := t
   end)
-  : A with type o = Output.t and type i = Input.t
+  : A with type i = Input.t
   = struct
 
   module Set = Set.Make (Input)
 
-  type o = Output.t
   type i = Input.t
   type set = Set.t
 
-  type t = {
+  type 'o t = {
     mutable n_states: int;
     mutable alphabet: Set.t;
-    accept: (int, o) Hashtbl.t;
+    accept: (int, 'o) Hashtbl.t;
     delta: (int * i, int) Hashtbl.t;
   }
 
@@ -88,34 +83,25 @@ module Make
   let read a q s =
     Hashtbl.find_opt a.delta (q, s)
 
-  let list_max l f =
-    List.fold_left (fun m x -> max m (f x)) 0 l
-
-  let pad_to n s =
-    let l = String.length s in
-    if l < n then
-      String.make (n-l) ' ' ^ s
-    else
-      s
-
   let to_string a =
-    let padding = 1 + list_max (Set.to_list a.alphabet) (fun x -> String.length (Input.to_string x)) in
+    let padding = 1 + Misc.list_max (Set.to_list a.alphabet) (fun x -> String.length (Input.to_string x)) in
 
     let rec f q s =
       if q = a.n_states then
         s
-      else
-        let s =
-          let qs = string_of_int q in
-          Printf.sprintf "%s%s %s\n" s 
-            (if is_accept a q then
-              underline ^ qs ^ end_
+      else 
+        let qs =
+            let qs = string_of_int q in
+            if is_accept a q then
+              Misc.underline ^ qs ^ Misc.end_
             else
-              qs) @@
+              qs in
+        let s = 
+          Printf.sprintf "%s%s %s\n" s qs @@
           Set.fold
             (fun s acc ->
               Printf.sprintf "%s|%s" acc @@
-              pad_to padding @@
+              Misc.pad_to padding @@
               match read a q s with
               | None -> "-"
               | Some q' -> string_of_int q')
@@ -128,10 +114,11 @@ module Make
       Set.fold
         (fun s acc ->
           Printf.sprintf "%s|%s" acc @@
-          pad_to padding @@
+          Misc.pad_to padding @@
           (Input.to_string s))
         a.alphabet
         "" in
+
     f 0 s
 
   let print a =
