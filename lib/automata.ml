@@ -5,6 +5,8 @@ module type ToString = sig
   val to_string: t -> string
 end
 
+
+
 (* signature visible du module créé par Make *)
 module type A = sig
   type sym
@@ -32,6 +34,8 @@ module type A = sig
   val to_string: ?full: bool -> 'o t -> string
   val print: ?full: bool -> 'o t -> unit
 end
+
+
 
 module Make
   (Sym: sig

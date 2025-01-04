@@ -1,4 +1,5 @@
 open Figue
+open Lexer
 
 module A = Automata.Make (Int)
 
@@ -11,4 +12,4 @@ let () =
   A.accept a 2 None;
   A.print a;
 
-  Lexer.A.print Lexer.lexer
+  Lexer.print Lexer.lexer
